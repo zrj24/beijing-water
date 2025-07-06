@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>行运北京</title>
+  <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no" />
+  <link href="https://unpkg.com/maplibre-gl@latest/dist/maplibre-gl.css" rel="stylesheet" />
+  <link rel="stylesheet" href="main.css">
+</head>
+<body>
+
+<nav id="navbar">
+  <div id="navbar-title">测试</div>
+  <select id="basemap-toggle">
+    <option value="esri">ArcGIS Imagery</option>
+    <option value="osm">OpenStreetMap</option>
+  </select>
+</nav>
+<div id="sidebar"></div>
+<div id="map"></div>
+
+<script src="https://unpkg.com/maplibre-gl@latest/dist/maplibre-gl.js"></script>
+<script src="app.js"></script>
+<script src="layer-styles.js"></script>
+<script>
+  const sources = {
+    esri: {
+      tiles: ["https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"],
+      attribution: "© Esri, Maxar, Earthstar Geographics",
+    },
+    osm: {
+      tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
+      attribution: "© OpenStreetMap contributors",
+    }
+  };
+
+  // List of geojson files to load as layers (order doesn't matter for loading)
+  const geojsonFiles = [
+    'sluices.geojson',
+    'lakes.geojson',
+    'lakes_1961.geojson',
+    'rivers.geojson',
+    'rivers_1961.geojson',
+    'ancient_sluices.geojson',
+    'points.geojson'
+  ];
+
+  const layerOrder = [
+    'rivers',        // Bottom layer
+    'rivers_1961',
+    'lakes',
+    'lakes_1961',
+    'sluices',
+    'ancient_sluices',
+    'points'         // Top layer
+  ];
+
+  const map = new maplibregl.Map({
+    container: 'map',
+    style: {
+      version: 8,
+      sources: {
+        basemap: {
+          type: "raster",
+          tiles: sources.esri.tiles,
+          tileSize: 256,
+          attribution: sources.esri.attribution,
+        }
+      },
+      layers: [
+        {
+          id: "basemap",
+          type: "raster",
+          source: "basemap"
+        }
+      ],
+      glyphs: "https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf"
+    },
+    center: [116.38, 39.9],
+    zoom: 11,
+  });
+
+  document.getElementById('basemap-toggle').addEventListener('change', (e) => {
+    const selected = e.target.value;
+    const src = sources[selected];
+    map.setStyle({
+      version: 8,
+      sources: {
+        basemap: {
+          type: "raster",
+          tiles: src.tiles,
+          tileSize: 256,
+          attribution: src.attribution,
+        }
+      },
+      layers: [
+        {
+          id: "basemap",
+          type: "raster",
+          source: "basemap"
+        }
+      ],
+      glyphs: "https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf"
+    });
+    // Re-add geojson layers after style change
+    map.once('styledata', () => {
+      addGeoJsonLayers();
+    });
+  });
+
+  // Add sidebar close on map click
+  map.on('click', () => {
+    hideSidebar();
+  });
+
+  // Add icons before geojson layers
+  function addGeoJsonLayers() {
+    console.log('addGeoJsonLayers function called');
+    const layerToggles = [];
+
+    // Load icons first, then geojson
+    let iconsLoaded = 0;
+    function tryLoadGeoJson() {
+      if (iconsLoaded === 2) loadGeoJsonFiles();
+    }
+    // Use base64 for sluices.png
+    const sluicesBase64 = "data:image/png;base64,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";
+    const sluicesImg = new window.Image();
+    sluicesImg.onload = function() {
+      const targetWidth = 30; // px, adjust as needed
+      const aspect = sluicesImg.height / sluicesImg.width;
+      const targetHeight = Math.round(targetWidth * aspect);
+      const canvas = document.createElement('canvas');
+      canvas.width = targetWidth;
+      canvas.height = targetHeight;
+      const ctx = canvas.getContext('2d');
+      ctx.clearRect(0, 0, targetWidth, targetHeight);
+      ctx.drawImage(sluicesImg, 0, 0, targetWidth, targetHeight);
+      map.addImage('sluices-icon', ctx.getImageData(0, 0, targetWidth, targetHeight), { sdf: false });
+      iconsLoaded++;
+      tryLoadGeoJson();
+    };
+    sluicesImg.onerror = function(err) {
+      console.error('Failed to load sluices base64:', err);
+      iconsLoaded++;
+      tryLoadGeoJson();
+    };
+    sluicesImg.src = sluicesBase64;
+    
+    const ancientSluicesBase64 = "data:image/png;base64,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";
+    const ancientSluicesImg = new window.Image();
+    ancientSluicesImg.onload = function() {
+      const targetWidth = 30;
+      const aspect = ancientSluicesImg.height / ancientSluicesImg.width;
+      const targetHeight = Math.round(targetWidth * aspect);
+      const canvas = document.createElement('canvas');
+      canvas.width = targetWidth;
+      canvas.height = targetHeight;
+      const ctx = canvas.getContext('2d');
+      ctx.clearRect(0, 0, targetWidth, targetHeight);
+      ctx.drawImage(ancientSluicesImg, 0, 0, targetWidth, targetHeight);
+      map.addImage('ancient_sluices-icon', ctx.getImageData(0, 0, targetWidth, targetHeight), { sdf: false });
+      iconsLoaded++;
+      tryLoadGeoJson();
+    };
+    ancientSluicesImg.onerror = function(err) {
+      console.error('Failed to load ancient_sluices base64:', err);
+      iconsLoaded++;
+      tryLoadGeoJson();
+    };
+    ancientSluicesImg.src = ancientSluicesBase64;
+
+    // Function to load GeoJSON files
+    function loadGeoJsonFiles() {
+      console.log('Starting to load GeoJSON files');
+      const loadedData = {};
+      let loadedCount = 0;
+      geojsonFiles.forEach((file, idx) => {
+        console.log(`Loading GeoJSON file: ${file}`);
+        fetch(file)
+          .then(resp => {
+            console.log(`Fetch response for ${file}:`, resp.status, resp.statusText);
+            if (!resp.ok) {
+              throw new Error(`HTTP error! status: ${resp.status}`);
+            }
+            return resp.json();
+          })
+          .then(data => {
+            console.log(`Successfully loaded data for ${file}:`, data);
+            const id = file.replace('.geojson', '');
+            loadedData[id] = data;
+            loadedCount++;
+            if (loadedCount === geojsonFiles.length) {
+              addLayersInOrder(loadedData);
+            }
+          })
+          .catch(error => {
+            console.error(`Error loading GeoJSON file ${file}:`, error);
+            loadedCount++;
+            if (loadedCount === geojsonFiles.length) {
+              addLayersInOrder(loadedData);
+            }
+          });
+      });
+    }
+    
+    // Add layers in the specified order
+    function addLayersInOrder(loadedData) {
+      console.log('Adding layers in correct order:', layerOrder);
+      
+      layerOrder.forEach(layerId => {
+        if (loadedData[layerId]) {
+          map.addSource(layerId, { type: 'geojson', data: loadedData[layerId] });
+          addStyledLayer(layerId, loadedData[layerId]);
+          if (layerConfig[layerId]) {
+            layerToggles.push({ 
+              id: layerId, 
+              name: layerConfig[layerId].name,
+              group: layerConfig[layerId].group,
+              map 
+            });
+          }
+        } else {
+          console.warn(`Data not found for layer: ${layerId}`);
+        }
+      });
+      
+      // Create layer toggle after all layers are added
+      if (document.getElementById('layer-toggle') == null) {
+        setTimeout(() => createLayerToggle(layerToggles), 0);
+      }
+    }
+    
+    // Apply styled layer based on configuration
+    function addStyledLayer(id, data) {
+      const style = layerStyles[id];
+      const config = layerConfig[id];
+      
+      if (!style || !config) {
+        console.warn(`No style configuration found for layer: ${id}`);
+        return;
+      }
+      let layer = {
+        id,
+        type: style.type,
+        source: id,
+        layout: style.layout || {},
+        paint: style.paint || {}
+      };
+      // Add visibility control
+      if (!layer.layout) layer.layout = {};
+      layer.layout.visibility = config.visible ? 'visible' : 'none';
+      map.addLayer(layer);
+
+      // Add river label layer if applicable
+      if (id === 'rivers' || id === 'rivers_1961') {
+        const labelStyle = layerStyles[id + '-labels'];
+        if (labelStyle) {
+          map.addLayer({
+            id: id + '-labels',
+            type: labelStyle.type,
+            source: id,
+            layout: labelStyle.layout,
+            paint: labelStyle.paint
+          });
+        }
+      }
+
+      // Add points label layer if applicable
+      if (id === 'points') {
+        const labelStyle = layerStyles[id + '-labels'];
+        if (labelStyle) {
+          map.addLayer({
+            id: id + '-labels',
+            type: labelStyle.type,
+            source: id,
+            layout: labelStyle.layout,
+            paint: labelStyle.paint
+          });
+        }
+      }
+      
+      // Add interactivity for clickable layers
+      if (config.interactive) {
+        map.on('click', id, (e) => {
+          e.originalEvent.cancelBubble = true;
+          if (e.features && e.features.length > 0) {
+            showSidebar(e.features[0].properties);
+          }
+        });
+        map.on('mouseenter', id, () => { 
+          map.getCanvas().style.cursor = 'pointer'; 
+        });
+        map.on('mouseleave', id, () => { 
+          map.getCanvas().style.cursor = ''; 
+        });
+      }
+    }
+    
+    // Just load GeoJSON files directly (no icon fallback)
+    loadGeoJsonFiles();
+  }
+
+  map.on('load', addGeoJsonLayers);
+</script>
+
+</body>
+</html>
