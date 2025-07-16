@@ -114,6 +114,7 @@ function showSidebar(properties) {
       <span id='sluice-img-modal-close' style='position:absolute;top:24px;right:36px;font-size:36px;color:#fff;cursor:pointer;z-index:10001;'>&times;</span>
       <img id='sluice-img-modal-img' src='' style='max-width:90vw;max-height:80vh;border-radius:8px;box-shadow:0 4px 24px rgba(0,0,0,0.25);margin-bottom:12px;'>
       <div id='sluice-img-modal-caption' style='color:#fff;font-size:17px;text-align:center;max-width:90vw;'></div>
+      <div id='sluice-img-modal-datetime' style='color:#ccc;font-size:13px;text-align:center;max-width:90vw;margin-top:4px;'></div>
       <div style='margin-top:8px;'>
         <button id='sluice-img-modal-prev' style='font-size:22px;padding:6px 18px;margin-right:18px;border:none;border-radius:4px;background:#fff;cursor:pointer;opacity:0.85;'>⟨</button>
         <button id='sluice-img-modal-next' style='font-size:22px;padding:6px 18px;border:none;border-radius:4px;background:#fff;cursor:pointer;opacity:0.85;'>⟩</button>
@@ -147,6 +148,7 @@ function showSidebar(properties) {
     const modal = document.getElementById('sluice-img-modal');
     let modalImg = document.getElementById('sluice-img-modal-img');
     const modalCaption = document.getElementById('sluice-img-modal-caption');
+    const modalDatetime = document.getElementById('sluice-img-modal-datetime');
     const modalClose = document.getElementById('sluice-img-modal-close');
     const modalPrev = document.getElementById('sluice-img-modal-prev');
     const modalNext = document.getElementById('sluice-img-modal-next');
@@ -154,15 +156,43 @@ function showSidebar(properties) {
                    document.getElementById('ancient-sluice-img-main') ||
                    document.getElementById('point-img-main');
     if (!mainImg) return;
+    
+    // Function to extract datetime from filename
+    function extractDatetimeFromFilename(url) {
+      const filename = url.split('/').pop().split('?')[0]; // Get filename without query params
+      const match = filename.match(/IMG_(\d{8})_(\d{6})\.jpg$/i);
+      if (match) {
+        const dateStr = match[1]; // yyyymmdd
+        const timeStr = match[2]; // hhmmss
+        const year = dateStr.substring(0, 4);
+        const month = dateStr.substring(4, 6);
+        const day = dateStr.substring(6, 8);
+        const hour = timeStr.substring(0, 2);
+        const minute = timeStr.substring(2, 4);
+        const second = timeStr.substring(4, 6);
+        
+        // Format as readable datetime
+        return `${year}-${month}-${day} ${hour}:${minute}:${second}`;
+      }
+      return null;
+    }
+    
     function showModal(idx) {
       if (!images[idx]) return;
       // Clear image and caption before loading new
       modalImg.src = '';
       modalCaption.textContent = '';
+      modalDatetime.textContent = '';
       // Use setTimeout to ensure the browser clears the image before loading new one
       setTimeout(() => {
         modalImg.src = images[idx].url;
         modalCaption.textContent = images[idx].caption || '';
+        
+        // Extract and display datetime if filename matches pattern
+        const datetime = extractDatetimeFromFilename(images[idx].url);
+        if (datetime) {
+          modalDatetime.textContent = `拍摄时间: ${datetime}`;
+        }
       }, 0);
       modal.style.display = 'flex';
       currentIdx = idx;
