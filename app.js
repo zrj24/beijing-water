@@ -28,7 +28,7 @@ function showSidebar(properties) {
   let type = '';
   if (properties && properties.hasOwnProperty('shown_name')) {
     // Check if it's sluices (has upstream/downstream) or points (doesn't have those)
-    if (properties.hasOwnProperty('upstream') || properties.hasOwnProperty('downstream')) {
+    if (properties.hasOwnProperty('upstream') || properties.hasOwnProperty('downstream') || properties.hasOwnProperty('mileage')) {
       type = 'sluices';
     } else {
       type = 'points';
