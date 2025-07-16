@@ -92,7 +92,7 @@ function showSidebar(properties) {
   } else if (type === 'points') {
     // Points: images, title, text (same as sluices but without routing table)
     html += renderImageGallery(properties, 'point-img-gallery', 'point-img-main');
-    const title = properties.shown_name || properties.name || 'Point';
+    const title = properties.name || 'Point';
     html += `<h2>${title}</h2>`;
     if (properties.text) {
       html += `<div style="margin-top:8px;white-space:pre-line;">${properties.text}</div>`;
