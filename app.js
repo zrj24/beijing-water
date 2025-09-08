@@ -24,81 +24,105 @@ function renderImageGallery(properties, galleryId = 'sluice-img-gallery', mainIm
 
 function showSidebar(properties) {
   const sidebar = document.getElementById('sidebar');
-  // Determine feature type
-  let type = '';
-  if (properties && properties.hasOwnProperty('shown_name')) {
-    // Check if it's sluices (has upstream/downstream) or points (doesn't have those)
-    if (properties.hasOwnProperty('upstream') || properties.hasOwnProperty('downstream') || properties.hasOwnProperty('mileage')) {
-      type = 'sluices';
-    } else {
-      type = 'points';
+  
+  let html = '';
+  
+  // Always try to render image gallery if img property exists
+  if (properties && properties.img) {
+    // Determine gallery ID based on feature type for backward compatibility
+    let galleryId = 'img-gallery';
+    let mainImgId = 'img-main';
+    if (properties.hasOwnProperty('name') && !properties.hasOwnProperty('shown_name')) {
+      galleryId = 'ancient-sluice-img-gallery';
+      mainImgId = 'ancient-sluice-img-main';
+    } else if (properties.hasOwnProperty('shown_name')) {
+      if (properties.hasOwnProperty('upstream') || properties.hasOwnProperty('downstream') || properties.hasOwnProperty('mileage')) {
+        galleryId = 'sluice-img-gallery';
+        mainImgId = 'sluice-img-main';
+      } else {
+        galleryId = 'point-img-gallery';
+        mainImgId = 'point-img-main';
+      }
     }
-  } else if (properties && properties.hasOwnProperty('name')) {
-    type = 'ancient_sluices';
+    html += renderImageGallery(properties, galleryId, mainImgId);
   }
 
-  let html = '';
-  if (type === 'sluices') {
-    // Modern sluices: images, title, mileage subtitle, vertical routing table, text
-    html += renderImageGallery(properties);
-    const title = properties.name || 'Sluice';
-    html += `<h2>${title}</h2>`;
-    // Show mileage if present and valid
-    if (properties.mileage != null && !isNaN(properties.mileage)) {
-      const mileageNum = Number(properties.mileage);
-      const km = Math.floor(mileageNum);
-      const m = Math.round((mileageNum - km) * 1000);
-      const mileageRiver = properties.River || '';
-      const mileageStr = `${km}+${m.toString().padStart(3, '0')}`;
-      html += `<div style='font-size:14px;color:#888;margin-bottom:6px;'>${mileageRiver} ${mileageStr}</div>`;
-    }
+  // Show title
+  const title = properties.name || 'Feature Details';
+  html += `<h2>${title}</h2>`;
+
+  // Show mileage if present and valid
+  if (properties.mileage != null && !isNaN(properties.mileage)) {
+    const mileageNum = Number(properties.mileage);
+    const km = Math.floor(mileageNum);
+    const m = Math.round((mileageNum - km) * 1000);
+    const mileageRiver = properties.River || '';
+    const mileageStr = `${km}+${m.toString().padStart(3, '0')}`;
+    html += `<div style='font-size:14px;color:#888;margin-bottom:6px;'>${mileageRiver} ${mileageStr}</div>`;
+  }
+
+  // Show upstream/downstream routing table if any routing info exists
+  const hasUpstream = properties.upstream && properties.upstream.trim();
+  const hasDownstream = properties.downstream && properties.downstream.trim();
+  const hasShownName = properties.shown_name && properties.shown_name.trim();
+  const hasWarn = typeof properties.warn !== 'undefined' && properties.warn !== null && properties.warn !== '';
+  const hasFlood = typeof properties.flood !== 'undefined' && properties.flood !== null && properties.flood !== '';
+  
+  if (hasUpstream || hasDownstream || hasShownName || hasWarn || hasFlood) {
     html += `<hr><table style="width:100%;margin-bottom:10px;border-collapse:collapse;font-size:15px;">
-      <tbody>
-        <tr>
+      <tbody>`;
+    
+    // Show upstream row if upstream exists
+    if (hasUpstream) {
+      html += `<tr>
           <th style='text-align:left;padding:4px 8px;width:90px;border-bottom:1px solid #ccc;'>上游</th>
-          <td style='padding:4px 8px;border-bottom:1px solid #eee;'>${properties.upstream ? properties.upstream : ''}</td>
-        </tr>
-        <tr>
+          <td style='padding:4px 8px;border-bottom:1px solid #eee;'>${properties.upstream}</td>
+        </tr>`;
+    }
+    
+    // Show current row if shown_name exists
+    if (hasShownName) {
+      html += `<tr>
           <th style='text-align:left;padding:4px 8px;width:90px;border-bottom:1px solid #ccc;'>当前</th>
-          <td style='padding:4px 8px;font-weight:bold;border-bottom:1px solid #eee;'>${properties.shown_name || ''}</td>
-        </tr>
-        <tr>
-          <th style='text-align:left;padding:4px 8px;width:90px;'>下游</th>
-          <td style='padding:4px 8px;'>${properties.downstream ? properties.downstream : ''}</td>
-        </tr>
-        ${(typeof properties.warn !== 'undefined' && properties.warn !== null && properties.warn !== '') ? `
-        <tr>
-          <th style='text-align:left;padding:4px 8px;width:90px;'>警戒水位</th>
-          <td style='padding:4px 8px;'>${Number(properties.warn).toFixed(2)}</td>
-        </tr>` : ''}
-        ${(typeof properties.flood !== 'undefined' && properties.flood !== null && properties.flood !== '') ? `
-        <tr>
+          <td style='padding:4px 8px;font-weight:bold;border-bottom:1px solid #eee;'>${properties.shown_name}</td>
+        </tr>`;
+    }
+    
+    // Show downstream row if downstream exists
+    if (hasDownstream) {
+      html += `<tr>
+          <th style='text-align:left;padding:4px 8px;width:90px;${hasWarn || hasFlood ? 'border-bottom:1px solid #ccc;' : ''}'>下游</th>
+          <td style='padding:4px 8px;${hasWarn || hasFlood ? 'border-bottom:1px solid #eee;' : ''}'>${properties.downstream}</td>
+        </tr>`;
+    }
+    
+    // Show warning water level if present
+    if (hasWarn) {
+      html += `<tr>
+          <th style='text-align:left;padding:4px 8px;width:90px;${hasFlood ? 'border-bottom:1px solid #ccc;' : ''}'>警戒水位</th>
+          <td style='padding:4px 8px;${hasFlood ? 'border-bottom:1px solid #eee;' : ''}'>${Number(properties.warn).toFixed(2)}</td>
+        </tr>`;
+    }
+    
+    // Show flood water level if present
+    if (hasFlood) {
+      html += `<tr>
           <th style='text-align:left;padding:4px 8px;width:90px;'>保证水位</th>
           <td style='padding:4px 8px;'>${Number(properties.flood).toFixed(2)}</td>
-        </tr>` : ''}
-      </tbody>
+        </tr>`;
+    }
+    
+    html += `</tbody>
     </table>`;
-    if (properties.text) {
-      html += `<div style=\"margin-top:8px;white-space:pre-line;\">${properties.text}</div>`;
-    }
-  } else if (type === 'ancient_sluices') {
-    // Ancient sluices: title, text, and images if present
-    html += renderImageGallery(properties, 'ancient-sluice-img-gallery', 'ancient-sluice-img-main');
-    const title = properties.name || 'Historical Sluice';
-    html += `<h2>${title}</h2>`;
-    if (properties.text) {
-      html += `<div style="margin-top:8px;white-space:pre-line;">${properties.text}</div>`;
-    }
-  } else if (type === 'points') {
-    // Points: images, title, text (same as sluices but without routing table)
-    html += renderImageGallery(properties, 'point-img-gallery', 'point-img-main');
-    const title = properties.name || 'Point';
-    html += `<h2>${title}</h2>`;
-    if (properties.text) {
-      html += `<div style="margin-top:8px;white-space:pre-line;">${properties.text}</div>`;
-    }
-  } else {
-    // Fallback: show all fields (for other layers)
+  }
+
+  // Show text if present
+  if (properties.text && properties.text.trim()) {
+    html += `<div style="margin-top:8px;white-space:pre-line;">${properties.text}</div>`;
+  }
+
+  // Fallback: if no recognized properties, show all fields
+  if (!properties.img && !title && !properties.mileage && !hasUpstream && !hasDownstream && !hasShownName && !hasWarn && !hasFlood && !properties.text) {
     html += '<h2>Feature Details</h2>';
     html += '<pre>' + JSON.stringify(properties, null, 2) + '</pre>';
   }
