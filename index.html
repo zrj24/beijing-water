@@ -27,14 +27,20 @@
   import * as maplibregl from 'https://unpkg.com/maplibre-gl@latest/dist/maplibre-gl.mjs';
 
   const tiandituToken = '5d84c4edf446ddd4fbab686565bbad85';
-  const sources = {
+  const basemaps = {
     tianditu: {
-      tiles: [`https://t0.tianditu.gov.cn/vec_w/wmts?tk=${encodeURIComponent(tiandituToken)}&x={x}&y={y}&l={z}`],
       attribution: "天地图",
+      layers: [
+        { id: "basemap", tiles: [`https://t0.tianditu.gov.cn/DataServer?T=vec_w&x={x}&y={y}&l={z}&tk=${encodeURIComponent(tiandituToken)}`] },
+        { id: "basemap-labels", tiles: [`https://t0.tianditu.gov.cn/DataServer?T=cva_w&x={x}&y={y}&l={z}&tk=${encodeURIComponent(tiandituToken)}`] }
+      ]
     },
     "tianditu-img": {
-      tiles: [`https://t0.tianditu.gov.cn/img_w/wmts?tk=${encodeURIComponent(tiandituToken)}&x={x}&y={y}&l={z}`],
       attribution: "天地图",
+      layers: [
+        { id: "basemap", tiles: [`https://t0.tianditu.gov.cn/DataServer?T=img_w&x={x}&y={y}&l={z}&tk=${encodeURIComponent(tiandituToken)}`] },
+        { id: "basemap-labels", tiles: [`https://t0.tianditu.gov.cn/DataServer?T=cia_w&x={x}&y={y}&l={z}&tk=${encodeURIComponent(tiandituToken)}`] }
+      ]
     },
     esri: {
       tiles: ["https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"],
@@ -45,6 +51,26 @@
       attribution: "© OpenStreetMap contributors",
     }
   };
+
+  function createBasemapStyle(basemap) {
+    const rasterLayers = basemap.layers || [{ id: "basemap", tiles: basemap.tiles }];
+    const styleSources = {};
+    const styleLayers = rasterLayers.map(({ id, tiles }) => {
+      styleSources[id] = {
+        type: "raster",
+        tiles,
+        tileSize: 256,
+        attribution: basemap.attribution,
+      };
+      return { id, type: "raster", source: id };
+    });
+    return {
+      version: 8,
+      sources: styleSources,
+      layers: styleLayers,
+      glyphs: "https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf"
+    };
+  }
 
   // List of geojson files to load as layers (order doesn't matter for loading)
   const geojsonFiles = [
@@ -69,51 +95,15 @@
 
   const map = new maplibregl.Map({
     container: 'map',
-    style: {
-      version: 8,
-      sources: {
-        basemap: {
-          type: "raster",
-          tiles: sources.tianditu.tiles,
-          tileSize: 256,
-          attribution: sources.tianditu.attribution,
-        }
-      },
-      layers: [
-        {
-          id: "basemap",
-          type: "raster",
-          source: "basemap"
-        }
-      ],
-      glyphs: "https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf"
-    },
+    style: createBasemapStyle(basemaps.tianditu),
     center: [116.38, 39.9],
     zoom: 11,
   });
 
   document.getElementById('basemap-toggle').addEventListener('change', (e) => {
     const selected = e.target.value;
-    const src = sources[selected];
-    map.setStyle({
-      version: 8,
-      sources: {
-        basemap: {
-          type: "raster",
-          tiles: src.tiles,
-          tileSize: 256,
-          attribution: src.attribution,
-        }
-      },
-      layers: [
-        {
-          id: "basemap",
-          type: "raster",
-          source: "basemap"
-        }
-      ],
-      glyphs: "https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf"
-    });
+    const basemap = basemaps[selected];
+    map.setStyle(createBasemapStyle(basemap));
     // Re-add geojson layers after style change
     map.once('styledata', () => {
       addGeoJsonLayers();
