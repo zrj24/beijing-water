@@ -12,6 +12,8 @@
 <nav id="navbar">
   <div id="navbar-title">行运北京</div>
   <select id="basemap-toggle">
+    <option value="tianditu">天地图</option>
+    <option value="tianditu-img">天地图影像</option>
     <option value="esri">ArcGIS Imagery</option>
     <option value="osm">OpenStreetMap</option>
   </select>
@@ -19,14 +21,21 @@
 <div id="sidebar"></div>
 <div id="map"></div>
 
-<!-- <script src="https://unpkg.com/maplibre-gl@latest/dist/maplibre-gl.js"></script> -->
-<script type='module'>
-import * as maplibregl from 'https://unpkg.com/maplibre-gl@latest/dist/maplibre-gl.mjs';
-</script>
 <script src="app.js"></script>
 <script src="layer-styles.js"></script>
-<script>
+<script type="module">
+  import * as maplibregl from 'https://unpkg.com/maplibre-gl@latest/dist/maplibre-gl.mjs';
+
+  const tiandituToken = window.TIANDITU_TOKEN || '';
   const sources = {
+    tianditu: {
+      tiles: [`https://t0.tianditu.gov.cn/vec_w/wmts?tk=${encodeURIComponent(tiandituToken)}&x={x}&y={y}&l={z}`],
+      attribution: "天地图",
+    },
+    "tianditu-img": {
+      tiles: [`https://t0.tianditu.gov.cn/img_w/wmts?tk=${encodeURIComponent(tiandituToken)}&x={x}&y={y}&l={z}`],
+      attribution: "天地图",
+    },
     esri: {
       tiles: ["https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"],
       attribution: "© Esri, Maxar, Earthstar Geographics",
@@ -65,9 +74,9 @@ import * as maplibregl from 'https://unpkg.com/maplibre-gl@latest/dist/maplibre-
       sources: {
         basemap: {
           type: "raster",
-          tiles: sources.esri.tiles,
+          tiles: sources.tianditu.tiles,
           tileSize: 256,
-          attribution: sources.esri.attribution,
+          attribution: sources.tianditu.attribution,
         }
       },
       layers: [
