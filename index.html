@@ -134,36 +134,14 @@
     const basemap = basemaps[selected];
     map.setStyle(createBasemapStyle(basemap));
     // Re-add geojson layers after style change
-    map.once('styledata', () => {
+    map.once('style.load', () => {
       addGeoJsonLayers();
     });
   });
 
-  // Query both POI symbols and their labels.  A click on a label previously
-  // reached the generic map handler and immediately closed the sidebar.
-  map.on('click', (event) => {
-    const interactiveLayerIds = Object.entries(layerConfig)
-      .filter(([, config]) => config.interactive)
-      .flatMap(([id]) => [id, `${id}-labels`])
-      .filter((id) => map.getLayer(id));
-    const feature = interactiveLayerIds.length
-      ? map.queryRenderedFeatures(event.point, { layers: interactiveLayerIds })[0]
-      : null;
-    if (feature) {
-      showSidebar(feature.properties);
-    } else {
-      hideSidebar();
-    }
-  });
-
-  map.on('mousemove', (event) => {
-    const interactiveLayerIds = Object.entries(layerConfig)
-      .filter(([, config]) => config.interactive)
-      .flatMap(([id]) => [id, `${id}-labels`])
-      .filter((id) => map.getLayer(id));
-    const hasInteractiveFeature = interactiveLayerIds.length &&
-      map.queryRenderedFeatures(event.point, { layers: interactiveLayerIds }).length > 0;
-    map.getCanvas().style.cursor = hasInteractiveFeature ? 'pointer' : '';
+  // Close the sidebar only when a feature click has not stopped propagation.
+  map.on('click', () => {
+    hideSidebar();
   });
 
   // Add icons before geojson layers
@@ -263,8 +241,15 @@
       
       layerOrder.forEach(layerId => {
         if (loadedData[layerId]) {
-          map.addSource(layerId, { type: 'geojson', data: loadedData[layerId] });
-          addStyledLayer(layerId, loadedData[layerId]);
+          const existingSource = map.getSource(layerId);
+          if (existingSource) {
+            existingSource.setData(loadedData[layerId]);
+          } else {
+            map.addSource(layerId, { type: 'geojson', data: loadedData[layerId] });
+          }
+          if (!map.getLayer(layerId)) {
+            addStyledLayer(layerId, loadedData[layerId]);
+          }
           if (layerConfig[layerId]) {
             layerToggles.push({ 
               id: layerId, 
@@ -309,13 +294,15 @@
       if (id === 'rivers' || id === 'rivers_1961') {
         const labelStyle = layerStyles[id + '-labels'];
         if (labelStyle) {
-          map.addLayer({
-            id: id + '-labels',
-            type: labelStyle.type,
-            source: id,
-            layout: labelStyle.layout,
-            paint: labelStyle.paint
-          });
+          if (!map.getLayer(id + '-labels')) {
+            map.addLayer({
+              id: id + '-labels',
+              type: labelStyle.type,
+              source: id,
+              layout: labelStyle.layout,
+              paint: labelStyle.paint
+            });
+          }
         }
       }
 
@@ -323,14 +310,32 @@
       if (id === 'points') {
         const labelStyle = layerStyles[id + '-labels'];
         if (labelStyle) {
-          map.addLayer({
-            id: id + '-labels',
-            type: labelStyle.type,
-            source: id,
-            layout: labelStyle.layout,
-            paint: labelStyle.paint
-          });
+          if (!map.getLayer(id + '-labels')) {
+            map.addLayer({
+              id: id + '-labels',
+              type: labelStyle.type,
+              source: id,
+              layout: labelStyle.layout,
+              paint: labelStyle.paint
+            });
+          }
         }
+      }
+
+      // Add interactivity for clickable layers
+      if (config.interactive) {
+        map.on('click', id, (e) => {
+          e.originalEvent.cancelBubble = true;
+          if (e.features && e.features.length > 0) {
+            showSidebar(e.features[0].properties);
+          }
+        });
+        map.on('mouseenter', id, () => {
+          map.getCanvas().style.cursor = 'pointer';
+        });
+        map.on('mouseleave', id, () => {
+          map.getCanvas().style.cursor = '';
+        });
       }
       
     }

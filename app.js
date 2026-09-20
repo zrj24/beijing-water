@@ -23,6 +23,9 @@ function renderImageGallery(properties, galleryId = 'sluice-img-gallery', mainIm
 }
 
 function showSidebar(properties) {
+  // MapLibre can return a null-prototype object for queried feature properties.
+  properties = properties || {};
+  const hasOwn = (key) => Object.prototype.hasOwnProperty.call(properties, key);
   const sidebar = document.getElementById('sidebar');
   
   let html = '';
@@ -32,11 +35,11 @@ function showSidebar(properties) {
     // Determine gallery ID based on feature type for backward compatibility
     let galleryId = 'img-gallery';
     let mainImgId = 'img-main';
-    if (properties.hasOwnProperty('name') && !properties.hasOwnProperty('shown_name')) {
+    if (hasOwn('name') && !hasOwn('shown_name')) {
       galleryId = 'ancient-sluice-img-gallery';
       mainImgId = 'ancient-sluice-img-main';
-    } else if (properties.hasOwnProperty('shown_name')) {
-      if (properties.hasOwnProperty('upstream') || properties.hasOwnProperty('downstream') || properties.hasOwnProperty('mileage')) {
+    } else if (hasOwn('shown_name')) {
+      if (hasOwn('upstream') || hasOwn('downstream') || hasOwn('mileage')) {
         galleryId = 'sluice-img-gallery';
         mainImgId = 'sluice-img-main';
       } else {
