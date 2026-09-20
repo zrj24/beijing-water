@@ -86,6 +86,20 @@
     };
   }
 
+  // MapLibre expands {x} and {y} before requesting a tile.  Distribute those
+  // requests predictably across TianDiTu's eight equivalent tile servers.
+  function balanceTiandituTileRequest(url) {
+    const tileUrl = new URL(url);
+    if (tileUrl.hostname !== 't0.tianditu.gov.cn') return { url };
+
+    const x = Number(tileUrl.searchParams.get('x'));
+    const y = Number(tileUrl.searchParams.get('y'));
+    if (!Number.isInteger(x) || !Number.isInteger(y)) return { url };
+
+    tileUrl.hostname = `t${Math.abs(x + y) % 8}.tianditu.gov.cn`;
+    return { url: tileUrl.toString() };
+  }
+
   // List of geojson files to load as layers (order doesn't matter for loading)
   const geojsonFiles = [
     'sluices.geojson',
@@ -112,6 +126,7 @@
     style: createBasemapStyle(basemaps['tianditu-img']),
     center: [116.38, 39.9],
     zoom: 11,
+    transformRequest: (url) => balanceTiandituTileRequest(url),
   });
 
   document.getElementById('basemap-toggle').addEventListener('change', (e) => {
@@ -124,9 +139,31 @@
     });
   });
 
-  // Add sidebar close on map click
-  map.on('click', () => {
-    hideSidebar();
+  // Query both POI symbols and their labels.  A click on a label previously
+  // reached the generic map handler and immediately closed the sidebar.
+  map.on('click', (event) => {
+    const interactiveLayerIds = Object.entries(layerConfig)
+      .filter(([, config]) => config.interactive)
+      .flatMap(([id]) => [id, `${id}-labels`])
+      .filter((id) => map.getLayer(id));
+    const feature = interactiveLayerIds.length
+      ? map.queryRenderedFeatures(event.point, { layers: interactiveLayerIds })[0]
+      : null;
+    if (feature) {
+      showSidebar(feature.properties);
+    } else {
+      hideSidebar();
+    }
+  });
+
+  map.on('mousemove', (event) => {
+    const interactiveLayerIds = Object.entries(layerConfig)
+      .filter(([, config]) => config.interactive)
+      .flatMap(([id]) => [id, `${id}-labels`])
+      .filter((id) => map.getLayer(id));
+    const hasInteractiveFeature = interactiveLayerIds.length &&
+      map.queryRenderedFeatures(event.point, { layers: interactiveLayerIds }).length > 0;
+    map.getCanvas().style.cursor = hasInteractiveFeature ? 'pointer' : '';
   });
 
   // Add icons before geojson layers
@@ -296,21 +333,6 @@
         }
       }
       
-      // Add interactivity for clickable layers
-      if (config.interactive) {
-        map.on('click', id, (e) => {
-          e.originalEvent.cancelBubble = true;
-          if (e.features && e.features.length > 0) {
-            showSidebar(e.features[0].properties);
-          }
-        });
-        map.on('mouseenter', id, () => { 
-          map.getCanvas().style.cursor = 'pointer'; 
-        });
-        map.on('mouseleave', id, () => { 
-          map.getCanvas().style.cursor = ''; 
-        });
-      }
     }
     
     // Just load GeoJSON files directly (no icon fallback)
