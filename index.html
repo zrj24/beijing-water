@@ -13,7 +13,9 @@
   <div id="navbar-title">行运北京</div>
   <select id="basemap-toggle">
     <option value="tianditu">天地图</option>
-    <option value="tianditu-img">天地图影像</option>
+    <option value="tianditu-labels">天地图（含注记）</option>
+    <option value="tianditu-img" selected>天地图影像</option>
+    <option value="tianditu-img-labels">天地图影像（含注记）</option>
     <option value="esri">ArcGIS Imagery</option>
     <option value="osm">OpenStreetMap</option>
   </select>
@@ -31,11 +33,23 @@
     tianditu: {
       attribution: "天地图",
       layers: [
+        { id: "basemap", tiles: [`https://t0.tianditu.gov.cn/DataServer?T=vec_w&x={x}&y={y}&l={z}&tk=${encodeURIComponent(tiandituToken)}`] }
+      ]
+    },
+    "tianditu-labels": {
+      attribution: "天地图",
+      layers: [
         { id: "basemap", tiles: [`https://t0.tianditu.gov.cn/DataServer?T=vec_w&x={x}&y={y}&l={z}&tk=${encodeURIComponent(tiandituToken)}`] },
         { id: "basemap-labels", tiles: [`https://t0.tianditu.gov.cn/DataServer?T=cva_w&x={x}&y={y}&l={z}&tk=${encodeURIComponent(tiandituToken)}`] }
       ]
     },
     "tianditu-img": {
+      attribution: "天地图",
+      layers: [
+        { id: "basemap", tiles: [`https://t0.tianditu.gov.cn/DataServer?T=img_w&x={x}&y={y}&l={z}&tk=${encodeURIComponent(tiandituToken)}`] }
+      ]
+    },
+    "tianditu-img-labels": {
       attribution: "天地图",
       layers: [
         { id: "basemap", tiles: [`https://t0.tianditu.gov.cn/DataServer?T=img_w&x={x}&y={y}&l={z}&tk=${encodeURIComponent(tiandituToken)}`] },
@@ -95,7 +109,7 @@
 
   const map = new maplibregl.Map({
     container: 'map',
-    style: createBasemapStyle(basemaps.tianditu),
+    style: createBasemapStyle(basemaps['tianditu-img']),
     center: [116.38, 39.9],
     zoom: 11,
   });
